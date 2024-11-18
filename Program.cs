@@ -46,6 +46,10 @@ public class Program
 			{
 				options.SwaggerEndpoint("/openapi/v1.json", "v1");
 			});
+			app.MapGet("/", async context =>
+			{
+				await Task.Run(() => context.Response.Redirect("./swagger/index.html", permanent: false));
+			});
 		}
 		app.UseHttpsRedirection();
 		app.UseAuthorization();
