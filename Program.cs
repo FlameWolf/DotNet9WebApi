@@ -1,4 +1,6 @@
-using Microsoft.OpenApi.Models;
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 
 namespace DotNet9WebApi;
 
@@ -7,36 +9,23 @@ public class Program
 	public static void Main(string[] args)
 	{
 		var builder = WebApplication.CreateBuilder(args);
+		builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
+		{
+			options.TokenValidationParameters = new TokenValidationParameters
+			{
+				ValidateIssuerSigningKey = true,
+				IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("CF5E756A97884E388A1C4BF25257B156")),
+				ValidateLifetime = true,
+				ValidateIssuer = false,
+				ValidateAudience = false,
+				ClockSkew = TimeSpan.Zero
+			};
+		});
 		builder.Services.AddControllers();
 		builder.Services.AddOpenApi(options =>
 		{
+			options.AddDocumentTransformer<BearerSecuritySchemeTransformer>();
 			options.OpenApiVersion = Microsoft.OpenApi.OpenApiSpecVersion.OpenApi3_0;
-		});
-		builder.Services.AddSwaggerGen(options =>
-		{
-			options.AddSecurityDefinition("bearerAuth", new()
-			{
-				Type = SecuritySchemeType.Http,
-				In = ParameterLocation.Header,
-				Scheme = "Bearer",
-				BearerFormat = "JWT",
-				Name = "Authorization",
-				Description = "Enter your bearer token"
-			});
-			options.AddSecurityRequirement(new()
-			{
-				{
-					new()
-					{
-						Reference = new()
-						{
-							Type = ReferenceType.SecurityScheme,
-							Id = "bearerAuth"
-						}
-					},
-					Array.Empty<string>()
-				}
-			});
 		});
 		var app = builder.Build();
 		if (app.Environment.IsDevelopment())
@@ -52,6 +41,7 @@ public class Program
 			});
 		}
 		app.UseHttpsRedirection();
+		app.UseAuthentication();
 		app.UseAuthorization();
 		app.MapControllers();
 		app.Run();
