@@ -1,6 +1,9 @@
 using System.Text;
+using DotNet9WebApi.Endpoints;
+using DotNet9WebApi.SwaggerFilters;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 
 namespace DotNet9WebApi;
 
@@ -22,18 +25,40 @@ public class Program
 			};
 		});
 		builder.Services.AddControllers();
-		builder.Services.AddOpenApi(options =>
+		builder.Services.AddSwaggerGen(options =>
 		{
-			options.AddDocumentTransformer<BearerSecuritySchemeTransformer>();
-			options.OpenApiVersion = Microsoft.OpenApi.OpenApiSpecVersion.OpenApi3_0;
+			options.OperationAsyncFilter<SwaggerArrayParameterFilter>();
+			options.AddSecurityDefinition("bearerAuth", new()
+			{
+				Type = SecuritySchemeType.Http,
+				In = ParameterLocation.Header,
+				Scheme = "Bearer",
+				BearerFormat = "JWT",
+				Name = "Authorization",
+				Description = "Enter your bearer token"
+			});
+			options.AddSecurityRequirement(new()
+			{
+				{
+					new()
+					{
+						Reference = new()
+						{
+							Type = ReferenceType.SecurityScheme,
+							Id = "bearerAuth"
+						}
+					},
+					Array.Empty<string>()
+				}
+			});
 		});
 		var app = builder.Build();
 		if (app.Environment.IsDevelopment())
 		{
-			app.MapOpenApi();
+			app.MapSwagger();
 			app.UseSwaggerUI(options =>
 			{
-				options.SwaggerEndpoint("/openapi/v1.json", "v1");
+				options.EnablePersistAuthorization();
 			});
 			app.MapGet("/", async context =>
 			{
@@ -43,7 +68,7 @@ public class Program
 		app.UseHttpsRedirection();
 		app.UseAuthentication();
 		app.UseAuthorization();
-		app.MapControllers();
+		app.MapWeatherForecastEndpoints();
 		app.Run();
 	}
 }
