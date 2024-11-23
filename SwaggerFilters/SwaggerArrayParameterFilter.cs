@@ -34,9 +34,9 @@ public class SwaggerArrayParameterFilter : IOperationAsyncFilter
 		visitedTypes.Add(type);
 		if (!operation.RequestBody.Content.TryGetValue(multipartFormData, out OpenApiMediaType? value))
 		{
-			value = new OpenApiMediaType
+			value = new()
 			{
-				Schema = new OpenApiSchema
+				Schema = new()
 				{
 					Type = "object",
 					Properties = new Dictionary<string, OpenApiSchema>()
@@ -45,8 +45,6 @@ public class SwaggerArrayParameterFilter : IOperationAsyncFilter
 			};
 			operation.RequestBody.Content[multipartFormData] = value;
 		}
-		var schemaProperties = value.Schema.Properties;
-		var encodings = value.Encoding;
 		foreach (var property in type.GetProperties())
 		{
 			if (HasSwaggerIgnoreAttribute(property))
@@ -55,11 +53,12 @@ public class SwaggerArrayParameterFilter : IOperationAsyncFilter
 			}
 			if (IsCollectionType(property.PropertyType))
 			{
-				ProcessCollectionProperty(property, schemaProperties, encodings);
-			}
-			else if (ShouldProcessAsComplexType(property.PropertyType))
-			{
-				ProcessProperties(property.PropertyType, operation, visitedTypes);
+				var propertyName = ToCamelCase(property.Name);
+				value.Schema.Properties[propertyName] = new();
+				value.Encoding[propertyName] = new()
+				{
+					Explode = true
+				};
 			}
 		}
 	}
@@ -78,21 +77,6 @@ public class SwaggerArrayParameterFilter : IOperationAsyncFilter
 		type != typeof(string) &&
 		!type.IsPrimitive &&
 		!type.IsValueType;
-
-	private static void ProcessCollectionProperty
-	(
-		PropertyInfo property,
-		IDictionary<string, OpenApiSchema> schemaProperties,
-		IDictionary<string, OpenApiEncoding> encodings
-	)
-	{
-		var propertyName = ToCamelCase(property.Name);
-		schemaProperties[propertyName] = new();
-		encodings[propertyName] = new()
-		{
-			Explode = true
-		};
-	}
 
 	private static string ToCamelCase(string value)
 	{
